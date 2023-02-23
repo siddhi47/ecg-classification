@@ -1,8 +1,8 @@
-from egc_classification.model_architectures import *
+from model_architectures import *
 
 models = {
-    'resnet': ECGResNet,
-    'dense': ECGDenseNet,
-    'inception': ECGInception,
-    'vgg': ECGVGG,
+    'resnet': ECGNetResNet,
+    'dense': ECGNetDenseNet,
+    'inception': ECGNetInception,
+    'vgg': ECGNetVGG,
     }
