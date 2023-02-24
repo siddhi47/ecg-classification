@@ -1,4 +1,5 @@
 import os
+import cv2
 import numpy as np
 
 
@@ -49,28 +50,42 @@ def train_test_val_split(file_paths, train_size=0.8, test_size=0.1, val_size=0.1
     return train_paths, test_paths, val_paths
 
 
-#todo: update this function
-def data_loader(file_paths, batch_size=32):
-    """Load the data from the given file paths.
+def data_loader(reference_file_path, path, batch_size = 32):
+    """Load the data from the given path and reference file.
 
     Parameters
     ----------
-    file_paths : list
-        List of file paths.
+    reference_file_path : str
+        Path to the reference file.
+    path : str
+        Path to the folder containing the data files.
     batch_size : int, optional
         Size of the batch, by default 32
 
     Yields
     -------
     tuple
-        Tuple of numpy arrays containing the data and labels.
+        Tuple of the data and the labels.
     """
-    data = []
-    labels = []
-    for file_path in file_paths:
-        data.append(np.load(file_path))
-        labels.append(file_path.split('/')[-2])
-    data = np.array(data)
-    labels = np.array(labels)
-    for i in range(0, len(data), batch_size):
-        yield data[i:i + batch_size], labels[i:i + batch_size]
+    with open(reference_file_path, 'r') as f:
+        reference = f.read().splitlines()
+    reference = {line.split(',')[0]+'.jpeg': line.split(',')[1] for line in reference}
+
+    file_paths = get_file_paths(path)
+    file_paths = np.random.permutation(list(file_paths))
+
+    for i in range(0, len(file_paths), batch_size):
+        batch = file_paths[i:i+batch_size]
+        data = []
+        labels = []
+        for file_path in batch:
+            # read image and convert to numpy array
+            image = cv2.imread(file_path, cv2.IMREAD_GRAYSCALE)
+            image = np.array(image)
+            data.append(image)
+            labels.append(reference[os.path.basename(file_path)])
+        yield np.array(data), np.array(labels)
+
+
+
+
