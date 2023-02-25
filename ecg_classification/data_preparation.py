@@ -1,7 +1,7 @@
 import os
 import cv2
 import numpy as np
-
+import shutil
 
 def get_file_paths(path):
     """Get the file paths in the given path.
@@ -17,6 +17,24 @@ def get_file_paths(path):
         List of file paths in the given path.
     """
     yield from (os.path.join(path, file) for file in os.listdir(path))
+
+def get_jpegs_recursively(path):
+    """Get the jpeg files in the given path recursively.
+
+    Parameters
+    ----------
+    path : str
+        Path to the folder containing the data files.
+
+    Yields
+    -------
+    str
+        Path to the jpeg file.
+    """
+    for root, dirs, files in os.walk(path):
+        for file in files:
+            if file.endswith('.jpeg'):
+                yield os.path.join(root, file)
 
 def train_test_val_split(file_paths, train_size=0.8, test_size=0.1, val_size=0.1):
     """Split the given file paths into train, test and validation sets.
@@ -38,7 +56,7 @@ def train_test_val_split(file_paths, train_size=0.8, test_size=0.1, val_size=0.1
         Tuple of lists containing the file paths for the train, test and validation sets.
     """
     #random shuffle
-    file_paths = np.random.permutation(file_paths)
+    file_paths = np.random.permutation(list(file_paths))
     train_size = int(train_size * len(file_paths))
     test_size = int(test_size * len(file_paths))
     val_size = int(val_size * len(file_paths))
@@ -48,6 +66,47 @@ def train_test_val_split(file_paths, train_size=0.8, test_size=0.1, val_size=0.1
     val_paths = file_paths[train_size + test_size:train_size + test_size + val_size]
 
     return train_paths, test_paths, val_paths
+
+def make_directories(path, dest_folder, reference_file):
+    """Make the directories for the train, test and validation sets.
+
+    Parameters
+    ----------
+    path : str
+        Path to the folder containing the data files.
+    reference_file : str
+        Path to the reference file.
+    """
+    train_path = os.path.join(dest_folder, 'train')
+    test_path = os.path.join(dest_folder, 'test')
+    val_path = os.path.join(dest_folder, 'val')
+
+    os.makedirs(train_path, exist_ok=True)
+    os.makedirs(test_path, exist_ok=True)
+    os.makedirs(val_path, exist_ok=True)
+
+    with open(reference_file, 'r') as f:
+        reference = f.read().splitlines()
+    reference = {line.split(',')[0]+'.jpeg': line.split(',')[1] for line in reference}
+
+    file_paths = get_file_paths(path)
+    train_paths, test_paths, val_paths = train_test_val_split(file_paths)
+    print(val_paths)
+
+    for file_path in train_paths:
+        os.makedirs(os.path.join(train_path, reference[os.path.basename(file_path)]), exist_ok=True)
+        # copy file to the new directory
+        shutil.copy(file_path, os.path.join(train_path, reference[os.path.basename(file_path)]))
+
+    for file_path in test_paths:
+        os.makedirs(os.path.join(test_path, reference[os.path.basename(file_path)]), exist_ok=True)
+        # copy file to the new directory
+        shutil.copy(file_path, os.path.join(test_path, reference[os.path.basename(file_path)]))
+
+    for file_path in val_paths:
+        os.makedirs(os.path.join(val_path, reference[os.path.basename(file_path)]), exist_ok=True)
+        # copy file to the new directory
+        shutil.copy(file_path, os.path.join(val_path, reference[os.path.basename(file_path)]))
 
 
 def data_loader(reference_file_path, path, batch_size = 32):
@@ -87,5 +146,22 @@ def data_loader(reference_file_path, path, batch_size = 32):
         yield np.array(data), np.array(labels)
 
 
+def data_loader_directory(path, batch_size = 32):
+    """
+    loads data from directory structure
+    """
+    file_paths = get_jpegs_recursively(path)
+    file_paths = np.random.permutation(list(file_paths))
 
+    for i in range(0, len(file_paths), batch_size):
+        batch = file_paths[i:i+batch_size]
+        data = []
+        labels = []
+        for file_path in batch:
+            # read image and convert to numpy array
+            image = cv2.imread(file_path, cv2.IMREAD_GRAYSCALE)
+            image = np.array(image)
+            data.append(image)
+            labels.append(file_path.split('/')[-2])
+        yield data, np.array(labels)
 
