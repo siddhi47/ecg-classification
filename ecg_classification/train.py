@@ -149,8 +149,5 @@ def main():
                 os.path.join(args.save, "model{}_{}.pth".format(args.model, epoch)),
             )
     
-    print(model)
-
-
 if __name__ == "__main__":
     main()

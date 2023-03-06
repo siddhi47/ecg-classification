@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 import shutil
 import torch
+from argparse import ArgumentParser
 from torchvision import datasets,  transforms
 
 def get_file_paths(path):
@@ -82,10 +83,11 @@ def make_directories(path, dest_folder, reference_file):
     reference_file : str
         Path to the reference file.
     """
+    os.makedirs(dest_folder, exist_ok=True)
     train_path = os.path.join(dest_folder, "train")
     test_path = os.path.join(dest_folder, "test")
     val_path = os.path.join(dest_folder, "val")
-
+    
     os.makedirs(train_path, exist_ok=True)
     os.makedirs(test_path, exist_ok=True)
     os.makedirs(val_path, exist_ok=True)
@@ -95,15 +97,14 @@ def make_directories(path, dest_folder, reference_file):
     reference = {line.split(",")[0] + ".jpeg": line.split(",")[1] for line in reference}
 
     file_paths = get_file_paths(path)
-    train_paths, test_paths, val_paths = train_test_val_split(file_paths)
-    print(val_paths)
+    train_paths, test_paths, val_paths = train_test_val_split(file_paths, 1,0,0)
 
     for file_path in train_paths:
         os.makedirs(
             os.path.join(train_path, reference[os.path.basename(file_path)]),
             exist_ok=True,
         )
-        # copy file to the new directory
+        ## copy file to the new directory
         shutil.copy(
             file_path, os.path.join(train_path, reference[os.path.basename(file_path)])
         )
@@ -250,4 +251,16 @@ def data_loader_directory(path, batch_size=32):
             labels.append(file_path.split("/")[-2])
         yield data, np.array(labels)
 
-#make_directories('converted_files','dataset','REFERENCE.csv')
+def parse_args():
+    ap = ArgumentParser()
+    ap.add_argument("-src", "--dataset", required=True, help="path to input dataset")
+    ap.add_argument("-ref", "--reference", required=True, help="path to reference file")
+    ap.add_argument("-dest", "--destination", required=True, help="path to destination")
+
+    return ap.parse_args()
+
+def main(args):
+    make_directories(args.dataset, args.destination, args.reference)
+
+if __name__ == "__main__":
+    main(parse_args())
