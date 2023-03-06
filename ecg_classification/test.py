@@ -3,6 +3,8 @@ from data_preparation import ECGLoader
 import os
 import torch
 from argparse import ArgumentParser
+import numpy as np
+from sklearn.metrics import confusion_matrix
 
 def parse_args():
     args = ArgumentParser(description="Test the model for ECG classification.")
@@ -25,7 +27,7 @@ def main(args):
         device = torch.device("cpu")
 
     # Create the dataset
-    dataloader = ECGLoader(os.path.join(args.data, "test"), args.batch_size)
+    dataloader = ECGLoader(os.path.join(args.data, "val"), args.batch_size)
     if len(dataloader) == 0:
         print(f"Could not find any data in {args.data}")
         return
@@ -52,6 +54,8 @@ def main(args):
     true_negative = 0
     false_positive = 0
     false_negative = 0
+    y_true_list = []
+    y_pred_list = []
 
     with torch.no_grad():
         for i, (x, y) in enumerate(dataloader):
@@ -59,6 +63,9 @@ def main(args):
             y = y.to(device)
             y_pred = model(x)
             _, predicted = torch.max(y_pred.data, 1)
+
+            y_true_list.append(y.cpu().numpy())
+            y_pred_list.append(predicted.cpu().numpy())
             total += y.size(0)
             correct += (predicted == y).sum().item()
             false_positive += (predicted == 1) & (y == 0)
@@ -77,5 +84,13 @@ def main(args):
     print(f"Specificity: {true_negative / (true_negative + false_positive)}")
     print(f"Accuracy: {100 * correct / total}%")
 
+    cm = confusion_matrix(y_true_list, y_pred_list)
+
+    f1_list = []
+    for idx,(i,j,k) in enumerate(zip(cm.sum(axis=1), cm.sum(axis=0), cm.diagonal())):
+        f1 = 2 * k / (i + j)
+        print(f"F1 score for class {idx}: {f1}")
+        f1_list.append(f1)
+    print(f"Mean F1 score: {np.mean(f1_list)}")
 if __name__ == "__main__":
     main(parse_args())

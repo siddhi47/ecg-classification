@@ -97,7 +97,7 @@ def make_directories(path, dest_folder, reference_file):
     reference = {line.split(",")[0] + ".jpeg": line.split(",")[1] for line in reference}
 
     file_paths = get_file_paths(path)
-    train_paths, test_paths, val_paths = train_test_val_split(file_paths, 1,0,0)
+    train_paths, test_paths, val_paths = train_test_val_split(file_paths,1,0,0)
 
     for file_path in train_paths:
         os.makedirs(

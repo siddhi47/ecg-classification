@@ -3,7 +3,10 @@ from data_preparation import ECGLoader
 import argparse
 import os
 import torch
+from loguru import logger
 
+
+logger.add("train.log", rotation="1000 MB", )
 
 def parse_args():
     """Parse the command line arguments."""
@@ -62,6 +65,7 @@ def main():
     """Run the training."""
     args = parse_args()
     torch.manual_seed(args.seed)
+    logger.info(f" Starting training for {args.model} model.")
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model = models[args.model](num_classes=4)
     model.to(device)
@@ -79,7 +83,7 @@ def main():
         model.load_state_dict(
             torch.load(os.path.join(args.save, f"model{args.model}_{latest_epoch}.pth"))
         )
-        print(f"Loaded model from epoch {latest_epoch}.")
+        logger.info(f"Loaded model from epoch {latest_epoch}.")
 
     # load data
     train_loader = ECGLoader(
@@ -109,7 +113,7 @@ def main():
             optimizer.step()
             if batch_idx % args.log_interval == 0:
                 acc = (output.argmax(dim=1) == target).float().mean()
-                print(
+                logger.info(
                         "\rTrain Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}\t accuracy: {:.6f}".format(
                         epoch,
                         batch_idx * len(data),
@@ -121,7 +125,7 @@ def main():
                     )
                 )
                 accuracy.append(acc.item())
-        print(f"Training Accuracy = {sum(accuracy)/len(accuracy)}")
+        logger.info(f"Training Accuracy = {sum(accuracy)/len(accuracy)}")
         if epoch % args.val_interval == 0:
             model.eval()
             val_loss = 0
@@ -134,7 +138,7 @@ def main():
                     pred = output.argmax(dim=1, keepdim=True)
                     correct += pred.eq(target.view_as(pred)).sum().item()
             val_loss /= len(val_loader)
-            print(
+            logger.info(
                 "Val set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n".format(
                     val_loss,
                     correct,
