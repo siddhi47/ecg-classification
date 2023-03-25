@@ -121,3 +121,23 @@ class ECGNet_Inception(torch.nn.Module):
         """
         x = self.model(x)
         return x
+
+class ECGNet_ViT(torch.nn.Module):
+    """
+    This class is uses VIT netowrk as pretrained network
+    """
+
+    def __init__(self, num_classes=5):
+        """
+        This function initializes the model
+        """
+        super(ECGNet_ViT, self).__init__()
+        self.model = torch.hub.load('facebookresearch/deit:main', 'deit_base_patch16_224', pretrained=True)
+        self.model.head = torch.nn.Linear(768, num_classes)
+
+    def forward(self, x):
+        """
+        This function defines the forward pass of the model
+        """
+        x = self.model(x)
+        return x
