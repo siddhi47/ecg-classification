@@ -66,3 +66,8 @@ For further help
 python ecg_classification/test.py --help
 ```
 
+
+## Adding other models
+
+You may also add your own custom models. To do this, you may add the architecture in the ecg_classification/model_architectures.py folder and define them in the model dictionery in ecg_classification/models.py file
+
