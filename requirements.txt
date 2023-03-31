@@ -1,0 +1,5 @@
+numpy
+loguru
+scikit-learn
+pandas
+opencv-python

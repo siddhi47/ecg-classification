@@ -4,7 +4,8 @@ import numpy as np
 import shutil
 import torch
 from argparse import ArgumentParser
-from torchvision import datasets,  transforms
+from torchvision import datasets, transforms
+
 
 def get_file_paths(path):
     """Get the file paths in the given path.
@@ -73,7 +74,7 @@ def train_test_val_split(file_paths, train_size=0.8, test_size=0.1, val_size=0.1
     return train_paths, test_paths, val_paths
 
 
-def make_directories(path, dest_folder, reference_file):
+def make_directories(path, dest_folder, reference_file, split):
     """Make the directories for the train, test and validation sets.
 
     Parameters
@@ -83,11 +84,17 @@ def make_directories(path, dest_folder, reference_file):
     reference_file : str
         Path to the reference file.
     """
+    split = float(split)
+    train_size = split
+    test_size = (1 - split) / 2
+    val_size = (1 - split) / 2
+
     os.makedirs(dest_folder, exist_ok=True)
+
     train_path = os.path.join(dest_folder, "train")
     test_path = os.path.join(dest_folder, "test")
     val_path = os.path.join(dest_folder, "val")
-    
+
     os.makedirs(train_path, exist_ok=True)
     os.makedirs(test_path, exist_ok=True)
     os.makedirs(val_path, exist_ok=True)
@@ -97,7 +104,9 @@ def make_directories(path, dest_folder, reference_file):
     reference = {line.split(",")[0] + ".jpeg": line.split(",")[1] for line in reference}
 
     file_paths = get_file_paths(path)
-    train_paths, test_paths, val_paths = train_test_val_split(file_paths,1,0,0)
+    train_paths, test_paths, val_paths = train_test_val_split(
+        file_paths, train_size, test_size, val_size
+    )
 
     for file_path in train_paths:
         os.makedirs(
@@ -170,7 +179,7 @@ def data_loader(reference_file_path, path, batch_size=32):
 class ECGLoader(torch.utils.data.Dataset):
     """ECG dataset."""
 
-    def __init__(self,  path, batch_size=32):
+    def __init__(self, path, batch_size=32):
         """
         Args:
             reference_file_path (string): Path to the reference file.
@@ -184,9 +193,9 @@ class ECGLoader(torch.utils.data.Dataset):
             "A": 1,
             "O": 2,
             "~": 3,
-            }
+        }
         IMG_SHAPE = (256, 256, 3)
-    
+
         self.transform = transforms.Compose(
             [
                 transforms.Resize(IMG_SHAPE[:-1]),
@@ -209,28 +218,26 @@ class ECGLoader(torch.utils.data.Dataset):
             data = []
             labels = []
             from PIL import Image
+
             for file_path in batch:
                 image = Image.open(file_path)
                 data.append(self.transform(image))
                 labels.append(self.class_mapping[file_path.split("/")[-2]])
             yield torch.stack(data), torch.tensor(labels)
 
+    # def __iter__(self, ):
 
+    # for i in range(0, len(self.file_paths), self.batch_size):
+    # batch = self.file_paths[i : i + self.batch_size]
+    # data = []
+    # labels = []
+    # for file_path in batch:
+    # from PIL import Image
+    ## read image and convert to numpy array
+    # image = Image.open(file_path)
+    # image= self.transform(image)
+    # yield image, torch.tensor(self.class_mapping[file_path.split("/")[-2]])
 
-    #def __iter__(self, ):
-
-
-        #for i in range(0, len(self.file_paths), self.batch_size):
-            #batch = self.file_paths[i : i + self.batch_size]
-            #data = []
-            #labels = []
-            #for file_path in batch:
-                #from PIL import Image
-                ## read image and convert to numpy array
-                #image = Image.open(file_path)
-                #image= self.transform(image)
-                #yield image, torch.tensor(self.class_mapping[file_path.split("/")[-2]])
-        
 
 def data_loader_directory(path, batch_size=32):
     """
@@ -251,16 +258,20 @@ def data_loader_directory(path, batch_size=32):
             labels.append(file_path.split("/")[-2])
         yield data, np.array(labels)
 
+
 def parse_args():
     ap = ArgumentParser()
     ap.add_argument("-src", "--dataset", required=True, help="path to input dataset")
     ap.add_argument("-ref", "--reference", required=True, help="path to reference file")
     ap.add_argument("-dest", "--destination", required=True, help="path to destination")
 
+    ap.add_argument("-s", "--split", type=float, default=0.8, help="split ratio")
     return ap.parse_args()
 
+
 def main(args):
-    make_directories(args.dataset, args.destination, args.reference)
+    make_directories(args.dataset, args.destination, args.reference, args.split)
+
 
 if __name__ == "__main__":
     main(parse_args())

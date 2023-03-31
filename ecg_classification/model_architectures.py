@@ -7,6 +7,7 @@
 import torch
 import torch.nn.functional as F
 
+
 class ECGNet_VGG(torch.nn.Module):
     """
     This class is uses VGG netowrk as pretrained network
@@ -122,6 +123,7 @@ class ECGNet_Inception(torch.nn.Module):
         x = self.model(x)
         return x
 
+
 class ECGNet_ViT(torch.nn.Module):
     """
     This class is uses VIT netowrk as pretrained network
@@ -132,7 +134,9 @@ class ECGNet_ViT(torch.nn.Module):
         This function initializes the model
         """
         super(ECGNet_ViT, self).__init__()
-        self.model = torch.hub.load('facebookresearch/deit:main', 'deit_base_patch16_224', pretrained=True)
+        self.model = torch.hub.load(
+            "facebookresearch/deit:main", "deit_base_patch16_224", pretrained=True
+        )
         self.model.head = torch.nn.Linear(768, num_classes)
 
     def forward(self, x):

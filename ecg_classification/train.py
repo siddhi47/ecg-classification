@@ -6,7 +6,11 @@ import torch
 from loguru import logger
 
 
-logger.add("train.log", rotation="1000 MB", )
+logger.add(
+    "train.log",
+    rotation="1000 MB",
+)
+
 
 def parse_args():
     """Parse the command line arguments."""
@@ -72,7 +76,7 @@ def main():
     latest_epoch = 0
     if any([args.model in file for file in os.listdir(args.save)]):
         # get latest model
-        print("Saved model found.")
+        logger.info("Saved model found.")
         latest_epoch = max(
             [
                 int(file.split("_")[1].split(".")[0])
@@ -87,13 +91,13 @@ def main():
 
     # load data
     train_loader = ECGLoader(
-        os.path.join(args.data,'train'),
+        os.path.join(args.data, "train"),
         batch_size=args.batch_size,
-        )
+    )
     val_loader = ECGLoader(
-        os.path.join(args.data,'val'),
+        os.path.join(args.data, "val"),
         batch_size=args.batch_size,
-        )
+    )
     optimizer = torch.optim.SGD(
         model.parameters(),
         lr=args.lr,
@@ -101,9 +105,9 @@ def main():
         weight_decay=args.weight_decay,
     )
     criterion = torch.nn.CrossEntropyLoss()
-    for epoch in range(latest_epoch, latest_epoch+args.epochs):
+    for epoch in range(latest_epoch, latest_epoch + args.epochs):
         model.train()
-        accuracy=[]
+        accuracy = []
         for batch_idx, (data, target) in enumerate(train_loader):
             data, target = data.to(device), target.to(device)
             optimizer.zero_grad()
@@ -114,7 +118,7 @@ def main():
             if batch_idx % args.log_interval == 0:
                 acc = (output.argmax(dim=1) == target).float().mean()
                 logger.info(
-                        "\rTrain Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}\t accuracy: {:.6f}".format(
+                    "\rTrain Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}\t accuracy: {:.6f}".format(
                         epoch,
                         batch_idx * len(data),
                         len(train_loader),
@@ -152,6 +156,7 @@ def main():
                 model.state_dict(),
                 os.path.join(args.save, "model{}_{}.pth".format(args.model, epoch)),
             )
-    
+
+
 if __name__ == "__main__":
     main()
