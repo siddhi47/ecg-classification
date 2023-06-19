@@ -1,11 +1,12 @@
 import os
+import pandas as pd
 import cv2
 import numpy as np
 import shutil
 import torch
 from argparse import ArgumentParser
 from torchvision import datasets, transforms
-
+from scipy.io import loadmat
 
 def get_file_paths(path):
     """Get the file paths in the given path.
@@ -225,19 +226,94 @@ class ECGLoader(torch.utils.data.Dataset):
                 labels.append(self.class_mapping[file_path.split("/")[-2]])
             yield torch.stack(data), torch.tensor(labels)
 
-    # def __iter__(self, ):
 
-    # for i in range(0, len(self.file_paths), self.batch_size):
-    # batch = self.file_paths[i : i + self.batch_size]
-    # data = []
-    # labels = []
-    # for file_path in batch:
-    # from PIL import Image
-    ## read image and convert to numpy array
-    # image = Image.open(file_path)
-    # image= self.transform(image)
-    # yield image, torch.tensor(self.class_mapping[file_path.split("/")[-2]])
+class ECGLoaderV2(torch.utils.data.Dataset):
+    """
+        ECG dataset loader for multimodal learning
+    """
+    
+    @staticmethod
+    def get_files_recursively(path, extension):
+        """Get all the files recursively from the given path.
 
+        Parameters
+        ----------
+        path : str
+            Path to the folder containing the files.
+        extension : str
+            Extension of the files to get.
+
+        Returns
+        -------
+        list
+            List of the file paths.
+        """
+        file_paths = []
+        for root, _, files in os.walk(path):
+            for file in files:
+                if file.endswith(extension):
+                    file_paths.append(os.path.join(root, file))
+        return file_paths
+
+
+    def __init__(self, image_path, signal_path, reference_file, batch_size, ):
+
+        """
+        Args:
+            path (string): Path to the folder containing the data files.
+            reference_file (string): Path to the reference file.
+            batch_size (int): Batch size for the data loader.
+        """
+        super(ECGLoaderV2, self).__init__()
+        self.class_mapping = {
+            "N": 0,
+            "A": 1,
+            "O": 2,
+            "~": 3,
+        }
+        self.image_path = image_path
+        self.signal_path = signal_path
+
+        self.batch_size = batch_size
+        IMG_SHAPE = (256, 256, 3)
+        self.transform = transforms.Compose(
+                [
+                    transforms.Resize(IMG_SHAPE[:-1]),
+                    transforms.ToTensor(),
+                    transforms.Normalize(
+                        [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
+                    ),
+                ]
+            )
+        
+        self.reference_file = reference_file
+        self.reference_df = pd.read_csv(self.reference_file, names=["file_name", "label"])
+
+        self.image_paths = list(self.get_files_recursively(image_path, 'jpeg'))
+        self.signal_paths = list(self.get_files_recursively(signal_path, 'mat'))
+
+    def __len__(self):
+        return self.reference_df.shape[0]
+
+    def __iter__(self):
+        """Return an iterator over the dataset."""
+        self.reference_df = self.reference_df.sample(frac=1).reset_index(drop=True)
+        for i in range(0, len(self.reference_df), self.batch_size):
+            batch = self.reference_df.iloc[i : i + self.batch_size]
+            data = []
+            labels = []
+            from PIL import Image
+
+            for _, row in batch.iterrows():
+                image_path = os.path.join(self.image_path, row["file_name"] + ".jpeg")
+                signal_path = os.path.join(self.signal_path, row["file_name"] + ".mat")
+                signal = torch.tensor(loadmat(signal_path)['val'][0])
+                image = Image.open(image_path)
+                data.append((self.transform(image), signal))
+                labels.append(self.class_mapping[row['label']])
+            yield data, torch.tensor(labels)
+
+        
 
 def data_loader_directory(path, batch_size=32):
     """
